@@ -3,6 +3,8 @@
 
 **CS2 Utility** — скрипт для оптимизации работы CS2, включающий в себя: очистку кэша игры, DirectX, NVIDIA DXCache, установления файла конфигурации процесса игры (.ini), установку файла autoexec и параметров запуска игры.
 
+Черпал вдохновление с Fortnite Utility: https://github.com/arsenzaaa/FORTNITE-UTILITY
+[@arsenza](https://github.com/arsenzaaa)
 
 ## 🔗 Ссылки
 - [![telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/er1nz01)
