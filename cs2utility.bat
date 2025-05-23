@@ -4,9 +4,9 @@ setlocal EnableDelayedExpansion
 :mainMenu
 cls
 echo.
-echo               CS2 UTILITY by @er1nz
-echo           https://www.github.com/er1nz           
-echo  Do the first 3 options after every game update
+echo                CS2 UTILITY by @er1nz
+echo            https://www.github.com/er1nz           
+echo Perform the first three options after every game update.
 echo.
 echo        1. Clear DirectX Shader Cache 
 echo        2. Clear NVIDIA DXCache Files
