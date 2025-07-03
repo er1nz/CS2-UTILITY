@@ -1,0 +1,28 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CURRENT_USER\SOFTWARE\Valve\Steam]
+"SettingPriority"="low"
+"SmoothScrollWebViews"=dword:00000000
+"DWriteEnable"=dword:00000000
+"StartupMode"=dword:00000000
+"H264HWAccel"=dword:00000000
+"DPIScaling"=dword:00000000
+"GPUAccelWebViews"=dword:00000000
+"BigPictureInForeground"=dword:00000000
+
+[HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Run]
+"Steam"=-
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SteamService.exe]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\SteamService.exe\PerfOptions]
+"CpuPriorityClass"=dword:00000001
+"IoPriority"=dword:00000001
+"PagePriority"=dword:00000002
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\steamwebhelper.exe]
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\steamwebhelper.exe\PerfOptions]
+"CpuPriorityClass"=dword:00000001
+"IoPriority"=dword:00000001
+"PagePriority"=dword:00000002
