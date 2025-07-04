@@ -6,7 +6,7 @@ title CS2 Utility Tool
 color 0A
 
 :: Initialize variables
-set "SCRIPT_VERSION=0.0.2"
+set "SCRIPT_VERSION=0.0.3"
 set "TEMP_DIR=%TEMP%\CS2Utility"
 set "CS2_DETECTED_PATH="
 set "CS2_CFG_PATH="
@@ -31,11 +31,14 @@ echo        [3] Launch Steam Console and Send Command (shader_build 730)
 echo        [4] Add autoexec.cfg file
 echo        [5] Configure launch parameters
 echo        [6] Add cs2.ini file
-echo        [7] Test CS2 Installation Detection
-echo        [8] Exit
+echo        [7] Apply Steam Tweaks (Performance Optimization)
+echo        [8] Apply Network Tweaks
+echo        [9] Run System Corruption Checker
+echo        [10] Test CS2 Installation Detection
+echo        [11] Exit
 echo.
 echo ===============================================================================
-set /p "choice=Select an option (1-8): "
+set /p "choice=Select an option (1-11): "
 
 :: Input validation
 if not defined choice (
@@ -51,10 +54,13 @@ if "%choice%"=="3" goto :launchConsole
 if "%choice%"=="4" goto :addAutoexec
 if "%choice%"=="5" goto :LaunchSettings
 if "%choice%"=="6" goto :addCs2Ini
-if "%choice%"=="7" goto :testCS2Detection
-if "%choice%"=="8" goto :exitScript
+if "%choice%"=="7" goto :applySteamTweaks 
+if "%choice%"=="8" goto :NetworkTweaks
+if "%choice%"=="9" goto :runCorruptionChecker
+if "%choice%"=="10" goto :testCS2Detection 
+if "%choice%"=="11" goto :exitScript
 
-call :showError "Invalid choice '%choice%'. Please select a number between 1-8."
+call :showError "Invalid choice '%choice%'. Please select a number between 1-11."
 goto :mainMenu
 
 :: ============================================================================
@@ -224,9 +230,12 @@ if not defined STEAM_PATH (
 if not defined STEAM_PATH (
     for /f "tokens=2*" %%a in ('reg query "HKEY_CURRENT_USER\SOFTWARE\Valve\Steam" /v SteamPath 2^>nul') do (
         set "STEAM_PATH=%%b"
+        :: Replace forward slashes with backslashes if needed
+        set "STEAM_PATH=!STEAM_PATH:/=\!"
     )
 )
 
+:: Return the value to the calling environment
 endlocal & set "STEAM_PATH=%STEAM_PATH%"
 exit /b 0
 
@@ -868,6 +877,90 @@ call :pressAnyKey
 goto :mainMenu
 
 :: ============================================================================
+:: FUNCTION: Get Manual CS2 Config Path
+:: ============================================================================
+:getManualCS2ConfigPath
+echo.
+echo Enter the full path to your CS2 configuration directory:
+echo.
+echo Example: C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg
+echo.
+set /p "CS2_CFG_PATH=Enter path: "
+
+if not defined CS2_CFG_PATH (
+    echo [ERROR] No path entered. Operation cancelled.
+    exit /b 1
+)
+
+:: Remove quotes if present
+set "CS2_CFG_PATH=!CS2_CFG_PATH:"=!"
+
+:: Validate CS2 config path
+if not exist "!CS2_CFG_PATH!" (
+    echo.
+    echo [WARNING] Directory does not exist: !CS2_CFG_PATH!
+    set /p "create=Create directory? (y/n): "
+    if /i "!create!"=="y" (
+        echo Creating directory: !CS2_CFG_PATH!
+        mkdir "!CS2_CFG_PATH!" 2>nul
+        if errorlevel 1 (
+            echo [ERROR] Failed to create directory: !CS2_CFG_PATH!
+            echo Please check permissions and try again.
+            exit /b 1
+        )
+        echo [SUCCESS] Directory created: !CS2_CFG_PATH!
+    ) else (
+        echo Operation cancelled.
+        exit /b 1
+    )
+)
+
+echo [SUCCESS] CS2 configuration path set to: !CS2_CFG_PATH!
+exit /b 0
+
+:: ============================================================================
+:: FUNCTION: Get Manual CS2 Binary Path
+:: ============================================================================
+:getManualCS2BinaryPath
+echo.
+echo Enter the full path to your CS2 binary directory:
+echo.
+echo Example: C:\Program Files (x86)\Steam\steamapps\common\Counter-Strike Global Offensive\game\bin\win64
+echo.
+set /p "CS2_BIN_PATH=Enter path: "
+
+if not defined CS2_BIN_PATH (
+    echo [ERROR] No path entered. Operation cancelled.
+    exit /b 1
+)
+
+:: Remove quotes if present
+set "CS2_BIN_PATH=!CS2_BIN_PATH:"=!"
+
+:: Validate CS2 binary path
+if not exist "!CS2_BIN_PATH!" (
+    echo.
+    echo [WARNING] Directory does not exist: !CS2_BIN_PATH!
+    set /p "create=Create directory? (y/n): "
+    if /i "!create!"=="y" (
+        echo Creating directory: !CS2_BIN_PATH!
+        mkdir "!CS2_BIN_PATH!" 2>nul
+        if errorlevel 1 (
+            echo [ERROR] Failed to create directory: !CS2_BIN_PATH!
+            echo Please check permissions and try again.
+            exit /b 1
+        )
+        echo [SUCCESS] Directory created: !CS2_BIN_PATH!
+    ) else (
+        echo Operation cancelled.
+        exit /b 1
+    )
+)
+
+echo [SUCCESS] CS2 binary path set to: !CS2_BIN_PATH!
+exit /b 0
+
+:: ============================================================================
 :: FUNCTION: Add autoexec.cfg file
 :: ============================================================================
 :addAutoexec
@@ -880,55 +973,36 @@ echo [WARNING] Change your binds and custom values after adding the autoexec
 echo.
 call :pressAnyKey
 
-:: Use new path selection system
-call :promptPathSelection "configuration" "CS2_CFG_DIR"
-if errorlevel 1 goto :mainMenu
+:: First try auto-detection
+echo Attempting to auto-detect CS2 installation...
+call :detectCS2Installation
 
-:: Validate and create directory if needed
-call :validateAndCreateDirectory "!CS2_CFG_DIR!" "configuration"
-if errorlevel 1 goto :mainMenu
+if defined CS2_CFG_PATH (
+    echo.
+    echo [SUCCESS] Auto-detected CS2 configuration path: !CS2_CFG_PATH!
+    echo.
+    set /p "confirm=Use this path? (y/n): "
+    if /i not "!confirm!"=="y" (
+        :: If user doesn't want to use auto-detected path, use manual entry
+        call :getManualCS2ConfigPath
+        if errorlevel 1 goto :mainMenu
+    )
+) else (
+    echo.
+    echo [WARNING] Could not auto-detect CS2 installation.
+    echo You will need to manually specify the configuration path.
+    echo.
+    call :getManualCS2ConfigPath
+    if errorlevel 1 goto :mainMenu
+)
 
 echo.
 echo Downloading autoexec.cfg from GitHub...
-call :downloadFile "https://raw.githubusercontent.com/er1nz/CS2-UTILITY/refs/heads/main/autoexec.cfg" "autoexec.cfg" "!CS2_CFG_DIR!"
+call :downloadFile "https://raw.githubusercontent.com/er1nz/CS2-UTILITY/refs/heads/main/autoexec.cfg" "autoexec.cfg" "!CS2_CFG_PATH!"
 if errorlevel 1 goto :mainMenu
 
 echo.
-echo [SUCCESS] autoexec.cfg has been created in "!CS2_CFG_DIR!"
-call :pressAnyKey
-goto :mainMenu
-
-:: ============================================================================
-:: FUNCTION: Configure Launch Parameters
-:: ============================================================================
-:LaunchSettings
-cls
-echo ===============================================================================
-echo                         CONFIGURE LAUNCH PARAMETERS
-echo ===============================================================================
-echo.
-echo The following launch parameters should be added to your CS2 launch options:
-echo.
-echo    -exec autoexec -noreflex -language english -allow_third_party_software
-echo.
-echo These parameters ensure:
-echo   • Your autoexec file is executed automatically
-echo   • Reflex is disabled (can improve performance on some systems)
-echo   • Game language is set to English
-echo   • Third party software is allowed
-echo.
-echo [INFO] Copying parameters to clipboard...
-echo -exec autoexec -noreflex -language english -allow_third_party_software | clip
-echo.
-echo [SUCCESS] Launch parameters copied to clipboard.
-echo.
-echo [INSTRUCTIONS]
-echo 1. Open Steam Library
-echo 2. Right-click on Counter-Strike 2
-echo 3. Select "Properties"
-echo 4. In the "Launch Options" field, paste the copied parameters
-echo 5. Close the Properties window
-echo.
+echo [SUCCESS] autoexec.cfg has been created in "!CS2_CFG_PATH!"
 call :pressAnyKey
 goto :mainMenu
 
@@ -948,23 +1022,1035 @@ echo [SECURITY] This will NOT trigger VAC (Valve Anti-Cheat) bans.
 echo.
 call :pressAnyKey
 
-:: Use new path selection system
-call :promptPathSelection "binary" "CS2_BIN_DIR"
-if errorlevel 1 goto :mainMenu
+:: First try auto-detection
+echo Attempting to auto-detect CS2 installation...
+call :detectCS2Installation
 
-:: Validate and create directory if needed
-call :validateAndCreateDirectory "!CS2_BIN_DIR!" "binary"
-if errorlevel 1 goto :mainMenu
+if defined CS2_BIN_PATH (
+    echo.
+    echo [SUCCESS] Auto-detected CS2 binary path: !CS2_BIN_PATH!
+    echo.
+    set /p "confirm=Use this path? (y/n): "
+    if /i not "!confirm!"=="y" (
+        :: If user doesn't want to use auto-detected path, use manual entry
+        call :getManualCS2BinaryPath
+        if errorlevel 1 goto :mainMenu
+    )
+) else (
+    echo.
+    echo [WARNING] Could not auto-detect CS2 installation.
+    echo You will need to manually specify the binary path.
+    echo.
+    call :getManualCS2BinaryPath
+    if errorlevel 1 goto :mainMenu
+)
 
 echo.
 echo Downloading cs2.ini from GitHub...
-call :downloadFile "https://raw.githubusercontent.com/er1nz/CS2-UTILITY/refs/heads/main/cs2.ini" "cs2.ini" "!CS2_BIN_DIR!"
+call :downloadFile "https://raw.githubusercontent.com/er1nz/CS2-UTILITY/refs/heads/main/cs2.ini" "cs2.ini" "!CS2_BIN_PATH!"
 if errorlevel 1 goto :mainMenu
 
 echo.
-echo [SUCCESS] cs2.ini has been created in "!CS2_BIN_DIR!"
+echo [SUCCESS] cs2.ini has been created in "!CS2_BIN_PATH!"
 call :pressAnyKey
 goto :mainMenu
+
+:: ============================================================================
+:: FUNCTION: Run System Corruption Checker
+:: ============================================================================
+:runCorruptionChecker
+cls
+echo ===============================================================================
+echo                        SYSTEM CORRUPTION CHECKER
+echo ===============================================================================
+echo.
+echo This tool will check and repair system files, clean up disk space,
+echo and fix potential corruption issues on your system.
+echo.
+echo [WARNING] This process requires administrator privileges and may take some time.
+echo Some operations will require system restart to complete.
+echo.
+set /p "confirm=Do you want to continue? (y/n): "
+if /i not "%confirm%"=="y" goto :mainMenu
+
+:: Check for admin rights
+echo.
+echo Checking for administrator privileges...
+openfiles >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [WARNING] Administrator privileges required.
+    echo Attempting to restart with elevated permissions...
+    
+    powershell -Command "Start-Process cmd -ArgumentList '/c %~s0' -Verb RunAs"
+    exit /b
+)
+
+echo [SUCCESS] Running with administrator privileges.
+echo.
+echo ===============================================================================
+echo                        QUICK DISK CHECK
+echo ===============================================================================
+echo.
+echo Running quick disk check on all drives...
+echo This will identify but not repair any issues.
+echo.
+
+for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
+    if exist %%D:\ (
+        echo Checking drive %%D:...
+        chkdsk %%D: /scan
+    )
+)
+
+echo.
+echo ===============================================================================
+echo                        SYSTEM FILE REPAIR
+echo ===============================================================================
+echo.
+echo Running DISM to check and repair system image...
+echo.
+dism.exe /Online /Cleanup-Image /CheckHealth
+echo.
+echo Running DISM scan health...
+dism.exe /Online /Cleanup-Image /ScanHealth
+echo.
+echo Running DISM restore health (this may take some time)...
+dism.exe /Online /Cleanup-Image /RestoreHealth
+echo.
+echo Running System File Checker (SFC)...
+sfc /scannow
+
+echo.
+echo ===============================================================================
+echo                        CLEANING TEMPORARY FILES
+echo ===============================================================================
+echo.
+echo Clearing temporary files and system caches...
+
+:: Grant permissions to temp folders
+echo Granting permissions to temp folders...
+icacls "%TEMP%" /Grant Everyone:(OI)(CI)F /T >nul 2>&1
+icacls "%USERPROFILE%\AppData\Local\Temp" /grant Everyone:(OI)(CI)F /T >nul 2>&1
+icacls "C:\Windows\Temp" /Grant Everyone:(OI)(CI)F /T >nul 2>&1
+icacls "C:\Windows\Prefetch" /Grant Everyone:(OI)(CI)F /T >nul 2>&1
+
+:: Clear temp folders
+echo Clearing temporary folders...
+for /D %%G in ("%TEMP%\*") do rd /S /Q "%%G" 2>nul
+del /Q "%TEMP%\*" >nul 2>&1
+for /D %%G in ("%USERPROFILE%\AppData\Local\Temp\*") do rd /S /Q "%%G" 2>nul
+del /Q "%USERPROFILE%\AppData\Local\Temp\*" >nul 2>&1
+for /D %%G in ("C:\Windows\Temp\*") do rd /S /Q "%%G" 2>nul
+del /Q "C:\Windows\Temp\*" >nul 2>&1
+for /D %%G in ("C:\Windows\Prefetch\*") do rd /S /Q "%%G" 2>nul
+del /Q "C:\Windows\Prefetch\*" >nul 2>&1
+
+:: Run disk cleanup
+echo Running disk cleanup...
+cleanmgr /sagerun:1 >nul 2>&1
+
+:: Clear DNS cache
+echo Clearing DNS cache...
+ipconfig /flushdns >nul 2>&1
+
+:: Clear event logs
+echo Clearing event logs...
+for /F "tokens=*" %%G in ('wevtutil el') do (
+    wevtutil cl "%%G" >nul 2>&1
+)
+
+echo.
+echo ===============================================================================
+echo                        SYSTEM CORRUPTION CHECK COMPLETE
+echo ===============================================================================
+echo.
+echo [SUCCESS] System corruption check and repair completed.
+echo It's recommended to restart your computer to apply all changes.
+echo.
+set /p "restart=Would you like to restart your computer now? (y/n): "
+if /i "%restart%"=="y" (
+    echo Restarting computer in 10 seconds...
+    shutdown /r /t 10 /c "Restarting to complete system repairs"
+) else (
+    echo Please remember to restart your computer later to complete the repairs.
+)
+
+call :pressAnyKey
+goto :mainMenu
+
+:: ============================================================================
+:: FUNCTION: Apply Steam Tweaks
+:: ============================================================================
+:applySteamTweaks
+setlocal EnableDelayedExpansion
+cls
+echo ===============================================================================
+echo                       STEAM PERFORMANCE TWEAKS
+echo ===============================================================================
+echo.
+echo This tool will apply various performance tweaks to Steam:
+echo.
+echo Available options:
+echo.
+echo  [1] Apply Steam Registry Tweaks (Disable unnecessary features)
+echo  [2] Install NoSteamWebHelper (Disable Steam CEF/Chromium)
+echo  [3] Apply Steam Launch Options (Single Account)
+echo  [4] Apply Steam Launch Options (Multi Account)
+echo  [5] Return to Main Menu
+echo.
+echo ===============================================================================
+set /p "tweak_choice=Select an option (1-5): "
+
+:: Input validation
+if not defined tweak_choice (
+    call :showError "No option selected. Please try again."
+    goto :applySteamTweaks
+)
+
+:: Remove any spaces and validate input
+set "tweak_choice=!tweak_choice: =!"
+if "!tweak_choice!"=="1" goto :applySteamRegistryTweaks
+if "!tweak_choice!"=="2" goto :installNoSteamWebHelper
+if "!tweak_choice!"=="3" goto :applySteamLaunchSingle
+if "!tweak_choice!"=="4" goto :applySteamLaunchMulti
+if "!tweak_choice!"=="5" (
+    endlocal
+    goto :mainMenu
+)
+
+call :showError "Invalid choice '!tweak_choice!'. Please select a number between 1-5."
+goto :applySteamTweaks
+
+:: ============================================================================
+:: FUNCTION: Apply Steam Registry Tweaks
+:: ============================================================================
+:applySteamRegistryTweaks
+setlocal EnableDelayedExpansion
+cls
+echo ===============================================================================
+echo                    APPLYING STEAM REGISTRY TWEAKS
+echo ===============================================================================
+echo.
+echo This will apply registry tweaks to optimize Steam performance:
+echo.
+echo Benefits:
+echo  • Disables unnecessary visual effects and animations
+echo  • Reduces CPU usage from Steam browser components
+echo  • Prevents Steam from starting with Windows
+echo  • Sets lower process priority for Steam components
+echo.
+echo [WARNING] This will modify Windows Registry settings for Steam.
+echo.
+set /p "confirm=Do you want to continue? (y/n): "
+if /i not "%confirm%"=="y" goto :mainMenu
+
+echo.
+echo Downloading Steam_Performance.reg from GitHub...
+call :downloadFile "https://raw.githubusercontent.com/er1nz/CS2-UTILITY/refs/heads/main/Steam_Performance.reg" "Steam_Performance.reg" "%TEMP_DIR%"
+if errorlevel 1 goto :applySteamTweaks
+
+echo.
+echo [SUCCESS] Registry file downloaded successfully.
+echo Opening registry file for import...
+
+:: Run the registry file
+start "" "%TEMP_DIR%\Steam_Performance.reg"
+
+echo.
+echo [INSTRUCTIONS]
+echo 1. A Registry Editor prompt will appear
+echo 2. Click "Yes" to apply the registry changes
+echo 3. Click "OK" when complete
+echo.
+echo [NOTE] You may need to restart Steam for all changes to take effect.
+echo.
+call :pressAnyKey
+endlocal
+goto :applySteamTweaks
+
+:: ============================================================================
+:: FUNCTION: Apply Steam Launch Options (Single Account)
+:: ============================================================================
+:applySteamLaunchSingle
+setlocal EnableDelayedExpansion
+cls
+echo ===============================================================================
+echo                STEAM LAUNCH OPTIONS (SINGLE ACCOUNT)
+echo ===============================================================================
+echo.
+echo This will create a shortcut with optimized Steam launch options for single account use:
+echo.
+echo Launch options:
+echo -dev -console -nofriendsui -no-dwrite -nointro -nobigpicture -nofasthtml 
+echo -nocrashmonitor -noshaders -no-shared-textures -disablehighdpi -cef-single-process 
+echo -cef-in-process-gpu -single_core -cef-disable-d3d11 -cef-disable-sandbox 
+echo -disable-winh264 -no-cef-sandbox -vrdisable -cef-disable-breakpad 
+echo +open steam://open/minigameslist
+echo.
+echo [INSTRUCTIONS]
+echo 1. Copy the steam_run.bat file to your Steam directory
+echo 2. Create a shortcut to this batch file
+echo 3. Use this shortcut instead of the regular Steam shortcut
+echo.
+set /p "confirm=Do you want to continue? (y/n): "
+if /i not "%confirm%"=="y" goto :mainMenu
+
+:: Find Steam installation directory
+echo.
+echo Finding Steam installation directory...
+set "STEAM_PATH="
+call :getSteamPathFromRegistry
+if not defined STEAM_PATH (
+    echo [WARNING] Could not detect Steam installation.
+    echo.
+    call :getManualSteamPath
+    if errorlevel 1 goto :applySteamTweaks
+)
+
+echo.
+echo [INFO] Steam path: !STEAM_PATH!
+echo.
+echo Copying steam_run.bat to Steam directory...
+
+:: Copy the batch file content to a new file
+echo start steam.exe -dev -console -nofriendsui -no-dwrite -nointro -nobigpicture -nofasthtml -nocrashmonitor -noshaders -no-shared-textures -disablehighdpi -cef-single-process -cef-in-process-gpu -single_core -cef-disable-d3d11 -cef-disable-sandbox -disable-winh264 -no-cef-sandbox -vrdisable -cef-disable-breakpad +open steam://open/minigameslist > "%TEMP_DIR%\steam_run.bat"
+
+:: Copy the file to Steam directory
+copy /Y "%TEMP_DIR%\steam_run.bat" "!STEAM_PATH!\steam_run.bat" >nul 2>&1
+if errorlevel 1 (
+    call :showError "Failed to copy file to Steam directory. Check permissions."
+    goto :applySteamTweaks
+)
+
+echo.
+echo [SUCCESS] Steam launch options batch file created at:
+echo !STEAM_PATH!\steam_run.bat
+echo.
+echo [INSTRUCTIONS]
+echo 1. Create a shortcut to this batch file on your desktop
+echo 2. Use this shortcut instead of the regular Steam shortcut
+echo 3. This will launch Steam with optimized settings
+echo.
+call :pressAnyKey
+endlocal
+goto :applySteamTweaks
+
+:: ============================================================================
+:: FUNCTION: Apply Steam Launch Options (Multi Account)
+:: ============================================================================
+:applySteamLaunchMulti
+setlocal EnableDelayedExpansion
+cls
+echo ===============================================================================
+echo                STEAM LAUNCH OPTIONS (MULTI ACCOUNT)
+echo ===============================================================================
+echo.
+echo This will create a shortcut with optimized Steam launch options for multi-account use:
+echo.
+echo Launch options:
+echo -cef-single-process -cef-disable-gpu -no-dwrite -skipinitialbootstrap 
+echo -quicklogin -oldtraymenu -silent -vgui +open steam://open/minigameslist exit
+echo.
+echo [INSTRUCTIONS]
+echo 1. Copy the steam_run.bat file to your Steam directory
+echo 2. Create a shortcut to this batch file
+echo 3. Use this shortcut instead of the regular Steam shortcut
+echo.
+set /p "confirm=Do you want to continue? (y/n): "
+if /i not "%confirm%"=="y" goto :mainMenu
+
+:: Find Steam installation directory
+echo.
+echo Finding Steam installation directory...
+set "STEAM_PATH="
+call :getSteamPathFromRegistry
+if not defined STEAM_PATH (
+    echo [WARNING] Could not detect Steam installation.
+    echo.
+    call :getManualSteamPath
+    if errorlevel 1 goto :applySteamTweaks
+)
+
+echo.
+echo [INFO] Steam path: !STEAM_PATH!
+echo.
+echo Copying steam_run.bat to Steam directory...
+
+:: Copy the batch file content to a new file
+echo steam.exe -cef-single-process -cef-disable-gpu -no-dwrite -skipinitialbootstrap -quicklogin -oldtraymenu -silent -vgui +open steam://open/minigameslist exit > "%TEMP_DIR%\steam_run_multi.bat"
+
+:: Copy the file to Steam directory
+copy /Y "%TEMP_DIR%\steam_run_multi.bat" "!STEAM_PATH!\steam_run_multi.bat" >nul 2>&1
+if errorlevel 1 (
+    call :showError "Failed to copy file to Steam directory. Check permissions."
+    goto :applySteamTweaks
+)
+
+echo.
+echo [SUCCESS] Steam multi-account launch options batch file created at:
+echo !STEAM_PATH!\steam_run_multi.bat
+echo.
+echo [INSTRUCTIONS]
+echo 1. Create a shortcut to this batch file on your desktop
+echo 2. Use this shortcut instead of the regular Steam shortcut
+echo 3. This will launch Steam with optimized settings for multi-account use
+echo.
+call :pressAnyKey
+endlocal
+goto :applySteamTweaks
+
+:: ============================================================================
+:: FUNCTION: Get Manual Steam Path
+:: ============================================================================
+:getManualSteamPath
+echo.
+echo Enter the full path to your Steam directory:
+echo.
+echo Example: C:\Program Files (x86)\Steam
+echo.
+set /p "STEAM_PATH=Enter path: "
+
+if not defined STEAM_PATH (
+    echo [ERROR] No path entered. Operation cancelled.
+    exit /b 1
+)
+
+:: Remove quotes if present
+set "STEAM_PATH=!STEAM_PATH:"=!"
+
+:: Validate Steam path
+if not exist "!STEAM_PATH!" (
+    echo.
+    echo [WARNING] Directory does not exist: !STEAM_PATH!
+    set /p "create=Create directory? (y/n): "
+    if /i "!create!"=="y" (
+        echo Creating directory: !STEAM_PATH!
+        mkdir "!STEAM_PATH!" 2>nul
+        if errorlevel 1 (
+            echo [ERROR] Failed to create directory: !STEAM_PATH!
+            echo Please check permissions and try again.
+            exit /b 1
+        )
+        echo [SUCCESS] Directory created: !STEAM_PATH!
+    ) else (
+        echo Operation cancelled.
+        exit /b 1
+    )
+)
+
+echo [SUCCESS] Steam path set to: !STEAM_PATH!
+exit /b 0
+
+:: ============================================================================
+:: FUNCTION: Install NoSteamWebHelper
+:: ============================================================================
+:installNoSteamWebHelper
+setlocal EnableDelayedExpansion
+cls
+echo ===============================================================================
+echo                       INSTALL NOSTEAMWEBHELPER
+echo ===============================================================================
+echo.
+echo This tool will install NoSteamWebHelper (by Aetopia) which disables Steam's
+echo CEF/Chromium Embedded Framework while games are running.
+echo.
+echo Benefits:
+echo  • Reduces memory usage while gaming
+echo  • Decreases CPU usage from unnecessary browser components
+echo  • Steam UI still works normally when not gaming
+echo.
+echo [INSTRUCTIONS]
+echo 1. Start Steam
+echo 2. NoSteamWebHelper will automatically disable Steam's CEF when games are running
+echo 3. You'll see a tray icon that allows you to manually toggle the CEF
+echo.
+echo [TIP] For best results, add -silent to your Steam shortcut to prevent
+echo      the CEF from automatically showing when restored.
+echo.
+echo [INFO] The tool will download and install umpdc.dll to your Steam directory.
+echo.
+set /p "confirm=Do you want to continue? (y/n): "
+if /i not "%confirm%"=="y" goto :mainMenu
+
+
+:: Find Steam installation directory
+echo.
+echo ===============================================================================
+echo                       STEAM INSTALLATION DETECTION
+echo ===============================================================================
+echo.
+echo Choose how to specify your Steam installation directory:
+echo.
+echo   [1] Auto-detect Steam installation (Recommended)
+echo   [2] Manually enter Steam path
+echo.
+set /p "steam_choice=Select option (1-2): "
+
+if "!steam_choice!"=="1" (
+    echo.
+    echo Attempting auto-detection...
+    echo Checking Windows Registry for Steam installation...
+
+    :: Get Steam path
+    echo Finding Steam path...
+    set "STEAM_PATH="
+
+    :: Try to get Steam path from registry (64-bit)
+    for /f "tokens=2*" %%a in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam" /v InstallPath 2^>nul') do (
+        set "STEAM_PATH=%%b"
+    )
+
+    :: If not found, try 32-bit registry
+    if not defined STEAM_PATH (
+        for /f "tokens=2*" %%a in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam" /v InstallPath 2^>nul') do (
+            set "STEAM_PATH=%%b"
+        )
+    )
+
+    :: Try current user registry as fallback
+    if not defined STEAM_PATH (
+        for /f "tokens=2*" %%a in ('reg query "HKEY_CURRENT_USER\SOFTWARE\Valve\Steam" /v SteamPath 2^>nul') do (
+            set "STEAM_PATH=%%b"
+            :: Replace forward slashes with backslashes if needed
+            set "STEAM_PATH=!STEAM_PATH:/=\!"
+        )
+    )
+
+    if not defined STEAM_PATH (
+        echo [WARNING] Auto-detection failed. Falling back to manual entry.
+        call :getManualSteamPath
+        if errorlevel 1 goto :applySteamTweaks
+    )
+) else if "!steam_choice!"=="2" (
+    echo.
+    echo Manual path entry selected.
+    call :getManualSteamPath
+    if errorlevel 1 goto :applySteamTweaks
+) else (
+    echo [WARNING] Invalid selection. Defaulting to auto-detection.
+    echo.
+    echo Attempting auto-detection...
+    
+    :: Try to get Steam path from registry (64-bit)
+    for /f "tokens=2*" %%a in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam" /v InstallPath 2^>nul') do (
+        set "STEAM_PATH=%%b"
+    )
+
+    :: If not found, try 32-bit registry
+    if not defined STEAM_PATH (
+        for /f "tokens=2*" %%a in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam" /v InstallPath 2^>nul') do (
+            set "STEAM_PATH=%%b"
+        )
+    )
+
+    :: Try current user registry as fallback
+    if not defined STEAM_PATH (
+        for /f "tokens=2*" %%a in ('reg query "HKEY_CURRENT_USER\SOFTWARE\Valve\Steam" /v SteamPath 2^>nul') do (
+            set "STEAM_PATH=%%b"
+            :: Replace forward slashes with backslashes if needed
+            set "STEAM_PATH=!STEAM_PATH:/=\!"
+        )
+    )
+
+    if not defined STEAM_PATH (
+        echo [WARNING] Auto-detection failed. Falling back to manual entry.
+        call :getManualSteamPath
+        if errorlevel 1 goto :applySteamTweaks
+    )
+)
+
+echo [SUCCESS] Steam path detected: !STEAM_PATH!
+goto :continueNoSteamWebHelper
+
+:continueNoSteamWebHelper
+:: Check if Steam is running
+tasklist /FI "IMAGENAME eq steam.exe" 2>nul | find /I /N "steam.exe" >nul
+if errorlevel 1 goto :startDownloadNoSteamWebHelper
+
+:: Steam is running, so handle it
+echo.
+echo [WARNING] Steam is currently running.
+echo NoSteamWebHelper requires Steam to be closed during installation.
+echo.
+set /p "close_steam=Would you like to close Steam now? (y/n): "
+if /i "!close_steam!"=="y" (
+    echo Closing Steam...
+    taskkill /F /IM steam.exe >nul 2>&1
+    timeout /t 3 >nul
+) else (
+    echo Please close Steam manually before continuing.
+    echo.
+    set /p "continue=Press Enter when Steam is closed to continue..."
+)
+
+:startDownloadNoSteamWebHelper
+:: Download NoSteamWebHelper (umpdc.dll)
+echo.
+echo ===============================================================================
+echo                       DOWNLOADING NOSTEAMWEBHELPER
+echo ===============================================================================
+echo.
+echo Downloading umpdc.dll from Aetopia's GitHub repository...
+
+:: Download file directly with curl
+curl -L -o "%TEMP_DIR%\umpdc.dll" "https://github.com/Aetopia/NoSteamWebHelper/releases/latest/download/umpdc.dll"
+if errorlevel 1 (
+    echo [ERROR] Download failed. Attempting alternate download method...
+    
+    :: Try using PowerShell as fallback
+    powershell -Command "try { [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://github.com/Aetopia/NoSteamWebHelper/releases/latest/download/umpdc.dll' -OutFile '%TEMP_DIR%\umpdc.dll' -UseBasicParsing } catch { exit 1 }"
+    
+    if errorlevel 1 (
+        :: Try using bitsadmin as last resort
+        bitsadmin /transfer "NoSteamWebHelperDownload" "https://github.com/Aetopia/NoSteamWebHelper/releases/latest/download/umpdc.dll" "%TEMP_DIR%\umpdc.dll" >nul
+        
+        if errorlevel 1 (
+            call :showError "All download methods failed. Please check your internet connection and try again."
+            goto :applySteamTweaks
+        )
+    )
+)
+
+echo.
+echo Download successful!
+echo Copying file to Steam directory: !STEAM_PATH!\umpdc.dll
+
+:: Copy file to Steam directory with error handling
+copy /Y "%TEMP_DIR%\umpdc.dll" "!STEAM_PATH!\umpdc.dll"
+if errorlevel 1 (
+    echo [WARNING] Failed to copy file. Attempting to run with elevated privileges...
+    
+    :: Create a temporary elevated script
+    echo @echo off > "%TEMP_DIR%\elevate_copy.bat"
+    echo copy /Y "%TEMP_DIR%\umpdc.dll" "!STEAM_PATH!\umpdc.dll" >> "%TEMP_DIR%\elevate_copy.bat"
+    echo exit >> "%TEMP_DIR%\elevate_copy.bat"
+    
+    :: Run with elevated privileges
+    powershell -Command "Start-Process cmd -ArgumentList '/c %TEMP_DIR%\elevate_copy.bat' -Verb RunAs"
+    timeout /t 3 >nul
+    
+    :: Check if file was copied
+    if not exist "!STEAM_PATH!\umpdc.dll" (
+        call :showError "Failed to copy file to Steam directory. Please try running the script as administrator."
+        goto :applySteamTweaks
+    )
+)
+
+echo [SUCCESS] NoSteamWebHelper has been installed to: !STEAM_PATH!\umpdc.dll
+echo.
+echo [INSTRUCTIONS]
+echo 1. Start Steam
+echo 2. NoSteamWebHelper will automatically disable Steam's CEF when games are running
+echo 3. You'll see a tray icon that allows you to manually toggle the CEF
+
+call :pressAnyKey
+endlocal
+goto :applySteamTweaks
+
+:: ============================================================================
+:: FUNCTION: Apply Network Fixes
+:: ============================================================================
+:NetworkTweaks
+:Network
+cls
+echo %z%Network Optimizations can cause better/worse results depending on the user, results may vary.%q%
+echo.
+echo %z%Would you like to Create a Restore Point before Optimizing your Network?%q%
+echo.
+echo %i%Yes = 1%q%
+echo.
+echo %i%No = 2%q%
+echo.
+echo %i%Go back to Menu = 3%q%
+echo.
+set choice=
+set /p choice=
+if not '%choice%'=='' set choice=%choice:~0,1%
+if '%choice%'=='1' goto RP2
+if '%choice%'=='2' goto NetworkTweaks
+if '%choice%'=='3' goto :mainMenu
+
+:RP2
+:: Creating Restore Point
+echo Creating Restore Point
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SystemRestore" /v "SystemRestorePointCreationFrequency" /t REG_DWORD /d "0" /f >> APB_Log.txt
+powershell -ExecutionPolicy Bypass -Command "Checkpoint-Computer -Description 'Ancels Performance Batch' -RestorePointType 'MODIFY_SETTINGS'" >> APB_Log.txt
+
+:NetworkTweaks
+cls
+
+:: Reset Internet
+echo Resetting Internet
+ipconfig /release
+ipconfig /renew
+ipconfig /flushdns
+netsh int ip reset
+netsh int ipv4 reset
+netsh int ipv6 reset
+netsh int tcp reset
+netsh winsock reset
+netsh advfirewall reset
+netsh branchcache reset
+netsh http flush logbuffer
+timeout /t 3 /nobreak > NUL
+
+cls
+set z=[7m
+set i=[1m
+set q=[0m
+echo %z%Are you on Windows 10 or Windows 11?%q%
+echo.
+echo %i%Windows 10 = 1%q%
+echo.
+echo %i%Windows 11 = 2%q%
+echo.
+set choice=
+set /p choice=
+if not '%choice%'=='' set choice=%choice:~0,1%
+if '%choice%'=='1' goto Windows10Network
+if '%choice%'=='2' goto Windows11Network
+
+:Windows10Network
+:: Enable CTCP
+echo Enabling CTCP
+netsh int tcp set supplemental Internet congestionprovider=ctcp
+timeout /t 1 /nobreak > NUL
+
+goto NetworkContinued
+
+:Windows11Network
+:: Enable BBR2
+echo Enabling BBR2
+netsh int tcp set supplemental Template=Compat CongestionProvider=bbr2
+netsh int tcp set supplemental Template=Internet CongestionProvider=bbr2
+netsh int tcp set supplemental Template=Datacenter CongestionProvider=bbr2
+netsh int tcp set supplemental Template=InternetCustom CongestionProvider=bbr2
+netsh int tcp set supplemental Template=DatacenterCustom CongestionProvider=bbr2
+timeout /t 1 /nobreak > NUL
+
+goto NetworkContinued
+
+:NetworkContinued
+:: Enable MSI Mode for Network Adapter
+echo Enabling MSI Mode for Network Adapter
+for /f %%l in ('wmic path win32_NetworkAdapter get PNPDeviceID ^| find "PCI\VEN_"') do (
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\SYSTEM\CurrentControlSet\Enum\%%l\Device Parameters\Interrupt Management\MessageSignaledInterruptProperties" /v "MSISupported" /t REG_DWORD /d "1" /f >> APB_Log.txt
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\SYSTEM\CurrentControlSet\Enum\%%l\Device Parameters\Interrupt Management\Affinity Policy" /v "DevicePriority" /t REG_DWORD /d "0" /f >> APB_Log.txt
+)
+timeout /t 1 /nobreak > NUL
+
+:: Disable Network Throttling
+echo Disabling Network Throttling
+reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Multimedia\SystemProfile" /v "NetworkThrottlingIndex" /t REG_DWORD /d "4294967295" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Set Network Autotuning to Disabled
+echo Setting Network AutoTuning to Disabled
+netsh int tcp set global autotuninglevel=disabled
+timeout /t 1 /nobreak > NUL
+
+:: Disable ECN
+echo Disabling Explicit Congestion Notification
+netsh int tcp set global ecncapability=disabled
+timeout /t 1 /nobreak > NUL
+
+:: Enable DCA
+echo Enabling Direct Cache Access
+netsh int tcp set global dca=enabled
+timeout /t 1 /nobreak > NUL
+
+:: Enable NetDMA
+echo Enabling Network Direct Memory Access
+netsh int tcp set global netdma=enabled
+timeout /t 1 /nobreak > NUL
+
+:: Disable RSC
+echo Disabling Recieve Side Coalescing
+netsh int tcp set global rsc=disabled
+timeout /t 1 /nobreak > NUL
+
+:: Enable RSS
+echo Enabling Recieve Side Scaling
+netsh int tcp set global rss=enabled
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Ndis\Parameters" /v "RssBaseCpu" /t REG_DWORD /d "1" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable TCP Timestamps
+echo Disabling TCP Timestamps
+netsh int tcp set global timestamps=disabled
+timeout /t 1 /nobreak > NUL
+
+:: Set Initial RTO to 2ms
+echo Setting Initial Retransmission Timer
+netsh int tcp set global initialRto=2000
+timeout /t 1 /nobreak > NUL
+
+:: Set MTU Size to 1500
+echo Setting MTU Size
+netsh interface ipv4 set subinterface “Ethernet” mtu=1500 store=persistent
+timeout /t 1 /nobreak > NUL
+
+:: Disable NonSackRTTresiliency
+echo Disabling Non Sack RTT Resiliency
+netsh int tcp set global nonsackrttresiliency=disabled
+timeout /t 1 /nobreak > NUL
+
+:: Set Max Syn Retransmissions to 2
+echo Setting Max Syn Retransmissions
+netsh int tcp set global maxsynretransmissions=2
+timeout /t 1 /nobreak > NUL
+
+:: Disable MPP
+echo Disabling Memory Pressure Protection
+netsh int tcp set security mpp=disabled
+timeout /t 1 /nobreak > NUL
+
+:: Disable Security Profiles
+echo Disabling Security Profiles
+netsh int tcp set security profiles=disabled
+timeout /t 1 /nobreak > NUL
+
+:: Disable Heuristics
+echo Disabling Windows Scaling Heuristics
+netsh int tcp set heuristics disabled
+timeout /t 1 /nobreak > NUL
+
+:: Increase ARP Cache Size to 4096
+echo Increasing ARP Cache Size
+netsh int ip set global neighborcachelimit=4096
+timeout /t 1 /nobreak > NUL
+
+:: Enable CTCP
+echo Enabling CTCP
+netsh int tcp set supplemental Internet congestionprovider=ctcp
+timeout /t 1 /nobreak > NUL
+
+:: Disable Task Offloading
+echo Disabling Task Offloading
+netsh int ip set global taskoffload=disabled
+timeout /t 1 /nobreak > NUL
+
+:: Disable IPv6
+echo Disabling IPv6
+netsh int ipv6 set state disabled
+timeout /t 1 /nobreak > NUL
+
+:: Disable ISATAP
+echo Disabling ISATAP
+netsh int isatap set state disabled
+timeout /t 1 /nobreak > NUL
+
+:: Disable Teredo
+echo Disabling Teredo
+netsh int teredo set state disabled
+timeout /t 1 /nobreak > NUL
+
+:: Set TTL to 64
+echo Configuring Time to Live
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "DefaultTTL" /t REG_DWORD /d "64" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Enable TCP Window Scaling
+echo Enabling TCP Window Scaling
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "Tcp1323Opts" /t REG_DWORD /d "1" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Set TcpMaxDupAcks
+echo Setting TcpMaxDupAcks to 2
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "TcpMaxDupAcks" /t REG_DWORD /d "2" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable SackOpts
+echo Disabling TCP Selective ACKs
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "SackOpts" /t REG_DWORD /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Increase Maximum Port Number
+echo Increasing Maximum Port Number
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "MaxUserPort" /t REG_DWORD /d "65534" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Decrease Time to Wait in "TIME_WAIT" State
+echo Decreasing Timed Wait Delay
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters" /v "TcpTimedWaitDelay" /t REG_DWORD /d "30" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Set Network Priorities
+echo Setting Network Priorities
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\ServiceProvider" /v "LocalPriority" /t REG_DWORD /d "4" /f >> APB_Log.txt
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\ServiceProvider" /v "HostsPriority" /t REG_DWORD /d "5" /f >> APB_Log.txt
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\ServiceProvider" /v "DnsPriority" /t REG_DWORD /d "6" /f >> APB_Log.txt
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\ServiceProvider" /v "NetbtPriority" /t REG_DWORD /d "7" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Adjust Sock Address Size
+echo Configuring Sock Address Size
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Winsock" /v "MinSockAddrLength" /t REG_DWORD /d "16" /f >> APB_Log.txt
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Winsock" /v "MaxSockAddrLength" /t REG_DWORD /d "16" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable Nagle's Algorithm
+echo Disabling Nagle's Algorithm
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" /v "TcpAckFrequency" /t REG_DWORD /d "1" /f >> APB_Log.txt
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" /v "TCPNoDelay" /t REG_DWORD /d "1" /f >> APB_Log.txt
+reg add "HKLM\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters\Interfaces" /v "TcpDelAckTicks" /t REG_DWORD /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable Delivery Optimization
+echo Disabling Delivery Optimization
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config" /v "DODownloadMode" /t REG_DWORD /d "0" /f >> APB_Log.txt
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Config" /v "DownloadMode" /t REG_DWORD /d "0" /f >> APB_Log.txt
+reg add "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\DeliveryOptimization\Settings" /v "DownloadMode" /t REG_DWORD /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable Auto Disconnect for Idle Connections
+echo Disabling Auto Disconnect
+reg add "HKLM\SYSTEM\CurrentControlSet\services\LanmanServer\Parameters" /v "autodisconnect" /t REG_DWORD /d "4294967295" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Limit Number of SMB Sessions
+echo Limiting SMB Sessions
+reg add "HKLM\SYSTEM\CurrentControlSet\services\LanmanServer\Parameters" /v "Size" /t REG_DWORD /d "3" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable Oplocks
+echo Disabling Oplocks
+reg add "HKLM\SYSTEM\CurrentControlSet\services\LanmanServer\Parameters" /v "EnableOplocks" /t REG_DWORD /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Set IRP Stack Size
+echo Setting IRP Stack Size
+reg add "HKLM\SYSTEM\CurrentControlSet\services\LanmanServer\Parameters" /v "IRPStackSize" /t REG_DWORD /d "20" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable Sharing Violations
+echo Disabling Sharing Violations
+reg add "HKLM\SYSTEM\CurrentControlSet\services\LanmanServer\Parameters" /v "SharingViolationDelay" /t REG_DWORD /d "0" /f >> APB_Log.txt
+reg add "HKLM\SYSTEM\CurrentControlSet\services\LanmanServer\Parameters" /v "SharingViolationRetries" /t REG_DWORD /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Get the Sub ID of the Network Adapter
+for /f %%n in ('Reg query "HKLM\SYSTEM\CurrentControlSet\Control\Class\{4D36E972-E325-11CE-BFC1-08002bE10318}" /v "*SpeedDuplex" /s ^| findstr  "HKEY"') do (
+
+:: Disable NIC Power Savings
+echo Disabling NIC Power Savings
+reg add "%%n" /v "AutoPowerSaveModeEnabled" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "AutoDisableGigabit" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "AdvancedEEE" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "DisableDelayedPowerUp" /t REG_SZ /d "2" /f >> APB_Log.txt
+reg add "%%n" /v "*EEE" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EEE" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EnablePME" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EEELinkAdvertisement" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EnableGreenEthernet" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EnableSavePowerNow" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EnablePowerManagement" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EnableDynamicPowerGating" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EnableConnectedPowerGating" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "EnableWakeOnLan" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "GigaLite" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "NicAutoPowerSaver" /t REG_SZ /d "2" /f >> APB_Log.txt
+reg add "%%n" /v "PowerDownPll" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "PowerSavingMode" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "ReduceSpeedOnPowerDown" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "SmartPowerDownEnable" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "S5NicKeepOverrideMacAddrV2" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "S5WakeOnLan" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "ULPMode" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "WakeOnDisconnect" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "*WakeOnMagicPacket" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "*WakeOnPattern" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "WakeOnLink" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "WolShutdownLinkSpeed" /t REG_SZ /d "2" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable Jumbo Frame
+echo Disabling Jumbo Frame
+reg add "%%n" /v "JumboPacket" /t REG_SZ /d "1514" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Configure Receive/Transmit Buffers
+echo Configuring Buffer Sizes
+reg add "%%n" /v "ReceiveBuffers" /t REG_SZ /d "1024" /f >> APB_Log.txt
+reg add "%%n" /v "TransmitBuffers" /t REG_SZ /d "4096" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Configure Offloads
+echo Configuring Offloads
+reg add "%%n" /v "IPChecksumOffloadIPv4" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "LsoV1IPv4" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "LsoV2IPv4" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "LsoV2IPv6" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "PMARPOffload" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "PMNSOffload" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "TCPChecksumOffloadIPv4" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "TCPChecksumOffloadIPv6" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "UDPChecksumOffloadIPv6" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "UDPChecksumOffloadIPv4" /t REG_SZ /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Enable RSS in NIC
+echo Enabling RSS in NIC
+reg add "%%n" /v "RSS" /t REG_SZ /d "1" /f >> APB_Log.txt
+reg add "%%n" /v "*NumRssQueues" /t REG_SZ /d "2" /f >> APB_Log.txt
+reg add "%%n" /v "RSSProfile" /t REG_SZ /d "3" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable Flow Control
+echo Disabling Flow Control
+reg add "%%n" /v "*FlowControl" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "FlowControlCap" /t REG_SZ /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Remove Interrupt Delays
+echo Removing Interrupt Delays
+reg add "%%n" /v "TxIntDelay" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "TxAbsIntDelay" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "RxIntDelay" /t REG_SZ /d "0" /f >> APB_Log.txt
+reg add "%%n" /v "RxAbsIntDelay" /t REG_SZ /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Remove Adapter Notification
+echo Removing Adapter Notification Sending
+reg add "%%n" /v "FatChannelIntolerant" /t REG_SZ /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+
+:: Disable Interrupt Moderation
+echo Disabling Interrupt Moderation
+reg add "%%n" /v "*InterruptModeration" /t REG_SZ /d "0" /f >> APB_Log.txt
+timeout /t 1 /nobreak > NUL
+)
+
+:: Enable WeakHost Send and Recieve (melodytheneko)
+echo Enabling WH Send and Recieve
+powershell "Get-NetAdapter -IncludeHidden | Set-NetIPInterface -WeakHostSend Enabled -WeakHostReceive Enabled -ErrorAction SilentlyContinue"
+timeout /t 1 /nobreak > NUL
+
+goto CompletedNetworkOptimizations
+
+:CompletedNetworkOptimizations
+cls
+echo Completed Network Optimizations
+call :pressAnyKey
+goto :mainMenu
+
+:: ============================================================================
+:: EXIT SCRIPT
+:: ============================================================================
+:exitScript
+cls
+echo.
+echo ===============================================================================
+echo  [SUCCESS] CS2 Utility v%SCRIPT_VERSION% completed successfully
+echo  All operations finished at %time% on %date%
+echo  https://www.github.com/er1nz
+echo ===============================================================================
+echo.
+echo Cleaning up temporary files...
+if exist "%TEMP_DIR%" rmdir /s /q "%TEMP_DIR%" >nul 2>&1
+
+timeout /t 3 >nul
+exit /b 0
 
 :: ============================================================================
 :: UTILITY FUNCTIONS
@@ -1060,20 +2146,40 @@ pause >nul
 exit /b 0
 
 :: ============================================================================
-:: EXIT SCRIPT
+:: FUNCTION: Configure Launch Parameters
 :: ============================================================================
-:exitScript
+:LaunchSettings
 cls
-echo.
 echo ===============================================================================
-echo  [SUCCESS] CS2 Utility v%SCRIPT_VERSION% completed successfully
-echo  All operations finished at %time% on %date%
-echo  https://www.github.com/er1nz
+echo                         CONFIGURE LAUNCH PARAMETERS
 echo ===============================================================================
 echo.
-echo Cleaning up temporary files...
-if exist "%TEMP_DIR%" rmdir /s /q "%TEMP_DIR%" >nul 2>&1
-
-timeout /t 3 >nul
-exit /b 0
+echo The following launch parameters should be added to your CS2 launch options:
+echo.
+echo -exec autoexec -noaafonts -no-browser -high -nojoy -limitvsconst -softparticlesdefaultoff +fps_max 0 +engine_low_latency_sleep_after_client_tick true +cl_clock_recvmargin_enable 0 +cl_cq_min_queue 1 -language english
+echo.
+echo Parameter breakdown:
+echo   • Launches autoexec.cfg file (-exec autoexec)
+echo   • Disables anti-aliased fonts and browser for performance (-noaafonts -no-browser)
+echo   • Sets high process priority and disables joystick support (-high -nojoy)
+echo   • Optimizes graphics and engine settings for smoother gameplay (-limitvsconst -softparticlesdefaultoff)
+echo   • Removes FPS cap (+fps_max 0)
+echo   • Enables low latency engine settings (+engine_low_latency_sleep_after_client_tick true)
+echo   • Disables clock receive margin and minimizes command queue (+cl_clock_recvmargin_enable 0 +cl_cq_min_queue 1)
+echo   • Forces game language to English (-language english)
+echo.
+echo [INFO] Copying parameters to clipboard...
+echo -exec autoexec -noaafonts -no-browser -high -nojoy -limitvsconst -softparticlesdefaultoff +fps_max 0 +engine_low_latency_sleep_after_client_tick true +cl_clock_recvmargin_enable 0 +cl_cq_min_queue 1 -language english | clip
+echo.
+echo [SUCCESS] Launch parameters copied to clipboard.
+echo.
+echo [INSTRUCTIONS]
+echo 1. Open Steam Library
+echo 2. Right-click on Counter-Strike 2
+echo 3. Select "Properties"
+echo 4. In the "Launch Options" field, paste the copied parameters
+echo 5. Close the Properties window
+echo.
+call :pressAnyKey
+goto :mainMenu
 
