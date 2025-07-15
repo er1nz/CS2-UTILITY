@@ -6,7 +6,7 @@
 Took inspiration from [Fortnite Utility](https://github.com/arsenzaaa/FORTNITE-UTILITY) from [@arsenza](https://github.com/arsenzaaa)
 
 ## 🔗 Links
-- (RU) [![telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/er1nz01)
+- [![telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/er1nz01) (RU) 
 
 -  **https://guns.lol/er1nz**
 
