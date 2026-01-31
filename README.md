@@ -5,11 +5,11 @@
 
 
 ## 🔗 Links
-- [![telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/er1nz01)
+- [![telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/qqer1nz)
 
 -  **https://guns.lol/er1nz**
 ## Credit
-* Made by [er1nz](https://github.com/er1nz) for maxxed out CS2 performance. [Join my Telegram channel!](https://t.me/er1nz01)
+* Made by [er1nz](https://github.com/er1nz) for maxxed out CS2 performance. [Join my Telegram channel!](https://t.me/qqer1nz)
 * Network Tweaker by [Ancel](https://github.com/ancel1x/Ancels-Performance-Batch) from his Windows Performance Batch.
 * Corruption Checker by [Falcon Tweaks](https://discord.gg/7hAUNJNPK7).
 * Took inspiration from [Fortnite Utility](https://github.com/arsenzaaa/FORTNITE-UTILITY) by [@arsenza](https://github.com/arsenzaaa)
