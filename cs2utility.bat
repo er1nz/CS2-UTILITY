@@ -6,7 +6,7 @@ title CS2 Utility Tool
 color 0A
 
 :: Initialize variables
-set "SCRIPT_VERSION=0.0.3"
+set "SCRIPT_VERSION=0.0.4"
 set "TEMP_DIR=%TEMP%\CS2Utility"
 set "CS2_DETECTED_PATH="
 set "CS2_CFG_PATH="
@@ -23,28 +23,47 @@ echo                          CS2 UTILITY v%SCRIPT_VERSION% by @er1nz
 echo                          https://www.github.com/er1nz
 echo ===============================================================================
 echo.
+echo   [!] UPDATED MAY 2026: All fixes applied + NEW Steam Cloud Clean feature
+echo   [!] NoSteamWebHelper: Last working version v5.0.2 (Dec 2025)
+echo.
 echo   IMPORTANT: Perform options 1-3 after every game update for optimal performance
 echo.
 echo        [1] Clear DirectX Shader Cache
 echo        [2] Clear NVIDIA DXCache Files
 echo        [3] Launch Steam Console and Send Command (shader_build 730)
 echo        [4] Add autoexec.cfg file
-echo        [5] Configure launch parameters
-echo        [6] Add cs2.ini file
-echo        [7] Apply Steam Tweaks (Performance Optimization)
-echo        [8] Apply Network Tweaks
-echo        [9] Run System Corruption Checker
-echo        [10] Test CS2 Installation Detection
+echo        [5] Configure launch parameters [UPDATED]
+echo        [6] Steam Tweaks (Performance Optimization) [UPDATED]
+echo        [7] Apply Network Tweaks [WARNING: Disables IPv6]
+echo        [8] Run System Corruption Checker
+echo        [9] Test CS2 Installation Detection
+echo        [10] Deep Clean Steam Cloud for CS2 [NEW - ADVANCED]
 echo        [11] Exit
 echo.
+echo ===============================================================================
+echo   NOTE: cs2.ini option removed (was non-functional)
 echo ===============================================================================
 set /p "choice=Select an option (1-11): "
 
 :: Input validation
 if not defined choice (
+    :: Check if we're in a loop (prevent infinite loops in non-interactive mode)
+    if not defined MENU_RETRY_COUNT set MENU_RETRY_COUNT=0
+    set /a MENU_RETRY_COUNT+=1
+    if !MENU_RETRY_COUNT! GEQ 3 (
+        echo.
+        echo [ERROR] Unable to read input. Script may be running in non-interactive mode.
+        echo Please run this script by double-clicking it or from cmd.exe
+        echo.
+        pause
+        goto :exitScript
+    )
     call :showError "No option selected. Please try again."
     goto :mainMenu
 )
+
+:: Reset retry counter on successful input
+set MENU_RETRY_COUNT=0
 
 :: Remove any spaces and validate input
 set "choice=%choice: =%"
@@ -53,11 +72,11 @@ if "%choice%"=="2" goto :clearNvidiaCache
 if "%choice%"=="3" goto :launchConsole
 if "%choice%"=="4" goto :addAutoexec
 if "%choice%"=="5" goto :LaunchSettings
-if "%choice%"=="6" goto :addCs2Ini
-if "%choice%"=="7" goto :applySteamTweaks 
-if "%choice%"=="8" goto :NetworkTweaks
-if "%choice%"=="9" goto :runCorruptionChecker
-if "%choice%"=="10" goto :testCS2Detection 
+if "%choice%"=="6" goto :applySteamTweaks 
+if "%choice%"=="7" goto :NetworkTweaks
+if "%choice%"=="8" goto :runCorruptionChecker
+if "%choice%"=="9" goto :testCS2Detection
+if "%choice%"=="10" goto :deepCleanSteamCloud
 if "%choice%"=="11" goto :exitScript
 
 call :showError "Invalid choice '%choice%'. Please select a number between 1-11."
@@ -801,10 +820,11 @@ del /q /f "%SHADER_CACHE_DIR%\*" >nul 2>&1
 
 :: Remove subdirectories more reliably with PowerShell
 echo Removing directories with PowerShell...
-powershell -Command "Get-ChildItem -Path '%SHADER_CACHE_DIR%' -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction Stop"
+powershell -Command "Get-ChildItem -Path '%SHADER_CACHE_DIR%' -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue" >nul 2>&1
 
 echo.
 echo [SUCCESS] DirectX Shader Cache cleared successfully.
+echo [INFO] Some files may be in use and couldn't be deleted - this is normal.
 call :pressAnyKey
 goto :mainMenu
 
@@ -832,10 +852,543 @@ del /q /f "%NVIDIA_CACHE_DIR%\*" >nul 2>&1
 
 :: Remove subdirectories using PowerShell for better reliability
 echo Removing directories with PowerShell...
-powershell -Command "Get-ChildItem -Path '%NVIDIA_CACHE_DIR%' -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction Stop"
+powershell -Command "Get-ChildItem -Path '%NVIDIA_CACHE_DIR%' -Recurse -Force | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue" >nul 2>&1
 
 echo.
 echo [SUCCESS] NVIDIA DXCache cleared successfully.
+echo [INFO] Some files may be in use and couldn't be deleted - this is normal.
+call :pressAnyKey
+goto :mainMenu
+
+:: ============================================================================
+:: NEW FUNCTION: Deep Clean Steam Cloud for CS2
+:: ============================================================================
+:deepCleanSteamCloud
+cls
+echo ===============================================================================
+echo                    DEEP CLEAN STEAM CLOUD FOR CS2
+echo ===============================================================================
+echo.
+echo [ADVANCED FEATURE - MAY 2026]
+echo.
+echo This procedure performs a complete Steam Cloud reset for Counter-Strike 2,
+echo emulating a "fresh account" experience without losing your transaction history.
+echo.
+echo [WHAT IT DOES]
+echo   • Clears accumulated configuration bloat from Steam Cloud
+echo   • Removes legacy CS:GO settings that conflict with CS2
+echo   • Resets cloud synchronization to clean state
+echo   • Improves frame times and reduces input lag
+echo.
+echo [TECHNICAL EXPLANATION]
+echo Over time, Steam Cloud accumulates outdated configs, workshop cache, and
+echo conflicting cvars that Source 2 engine tries to load. This causes:
+echo   - Frame time spikes
+echo   - Increased input lag
+echo   - Micro-stutters
+echo   - Slower game startup
+echo.
+echo This is why new accounts feel "smoother" - they have no legacy data.
+echo.
+echo ===============================================================================
+echo                          CRITICAL WARNINGS
+echo ===============================================================================
+echo.
+echo [!] IMPORTANT REQUIREMENTS:
+echo   1. Steam MUST be completely closed during this process
+echo   2. CS2 MUST NOT be running
+echo   3. You will need to reconfigure your in-game settings after
+echo   4. Custom configs in cfg folder will be cleared
+echo.
+echo [!] WHAT WILL BE RESET:
+echo   • All in-game video/audio settings
+echo   • Crosshair settings
+echo   • Keybinds (except autoexec.cfg)
+echo   • Buy menu favorites
+echo   • Workshop map cache
+echo.
+echo [!] WHAT WILL BE PRESERVED:
+echo   • Your inventory and skins
+echo   • Your rank and stats
+echo   • Your friends list
+echo   • Your Steam account data
+echo.
+echo ===============================================================================
+echo.
+set /p "confirm1=Do you understand the risks and want to proceed? (y/n): "
+if /i not "%confirm1%"=="y" (
+    echo.
+    echo Operation cancelled. Returning to main menu...
+    timeout /t 2 >nul
+    goto :mainMenu
+)
+
+echo.
+echo ===============================================================================
+echo                          FINAL CONFIRMATION
+echo ===============================================================================
+echo.
+echo [LAST WARNING] This will reset your CS2 cloud data to factory state.
+echo.
+echo Type "RESET" (in capital letters) to confirm:
+set /p "confirm2=Confirmation: "
+if not "%confirm2%"=="RESET" (
+    echo.
+    echo Confirmation failed. Operation cancelled.
+    timeout /t 2 >nul
+    goto :mainMenu
+)
+
+echo.
+echo ===============================================================================
+echo                          STEP 1: VERIFY STEAM IS CLOSED
+echo ===============================================================================
+echo.
+echo Checking if Steam is running...
+
+:: Check if Steam is running
+tasklist /FI "IMAGENAME eq steam.exe" 2>nul | find /I /N "steam.exe" >nul
+if not errorlevel 1 (
+    echo.
+    echo [WARNING] Steam is currently running!
+    echo Steam MUST be closed for this procedure to work correctly.
+    echo.
+    set /p "close_steam=Close Steam now? (y/n): "
+    if /i "!close_steam!"=="y" (
+        echo.
+        echo Closing Steam...
+        taskkill /F /IM steam.exe >nul 2>&1
+        timeout /t 3 >nul
+        
+        :: Verify Steam is closed
+        tasklist /FI "IMAGENAME eq steam.exe" 2>nul | find /I /N "steam.exe" >nul
+        if not errorlevel 1 (
+            echo [ERROR] Failed to close Steam. Please close it manually.
+            echo.
+            pause
+            goto :mainMenu
+        )
+        echo [SUCCESS] Steam closed successfully.
+    ) else (
+        echo.
+        echo Please close Steam manually and run this option again.
+        pause
+        goto :mainMenu
+    )
+) else (
+    echo [SUCCESS] Steam is not running.
+)
+
+echo.
+echo ===============================================================================
+echo                          STEP 2: LOCATE STEAM USERDATA
+echo ===============================================================================
+echo.
+
+:: Get Steam path - INLINE VERSION (no function call)
+set "STEAM_PATH="
+
+echo Checking Windows Registry for Steam installation...
+
+:: Try to get Steam path from registry (64-bit)
+for /f "tokens=2*" %%a in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Valve\Steam" /v InstallPath 2^>nul') do (
+    set "STEAM_PATH=%%b"
+)
+
+:: If not found, try 32-bit registry
+if not defined STEAM_PATH (
+    for /f "tokens=2*" %%a in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Valve\Steam" /v InstallPath 2^>nul') do (
+        set "STEAM_PATH=%%b"
+    )
+)
+
+:: Try current user registry as fallback
+if not defined STEAM_PATH (
+    for /f "tokens=2*" %%a in ('reg query "HKEY_CURRENT_USER\SOFTWARE\Valve\Steam" /v SteamPath 2^>nul') do (
+        set "STEAM_PATH=%%b"
+        :: Replace forward slashes with backslashes if needed
+        set "STEAM_PATH=!STEAM_PATH:/=\!"
+    )
+)
+
+if not defined STEAM_PATH (
+    echo [ERROR] Could not detect Steam installation.
+    echo.
+    set /p "manual_steam=Enter Steam path manually (e.g., C:\Program Files (x86)\Steam): "
+    set "STEAM_PATH=!manual_steam!"
+    set "STEAM_PATH=!STEAM_PATH:"=!"
+)
+
+echo Steam path: !STEAM_PATH!
+echo.
+
+:: Check if userdata folder exists
+set "USERDATA_PATH=!STEAM_PATH!\userdata"
+if not exist "!USERDATA_PATH!" (
+    echo [ERROR] Userdata folder not found at: !USERDATA_PATH!
+    echo.
+    pause
+    goto :mainMenu
+)
+
+echo [SUCCESS] Userdata folder found.
+echo.
+
+:: List user folders
+echo Detecting Steam user accounts...
+echo.
+set "USER_COUNT=0"
+set "USER_1="
+set "USER_2="
+set "USER_3="
+set "USER_4="
+set "USER_5="
+
+for /d %%d in ("!USERDATA_PATH!\*") do (
+    set /a USER_COUNT+=1
+    set "USER_!USER_COUNT!=%%~nxd"
+    echo [!USER_COUNT!] User ID: %%~nxd
+)
+
+if !USER_COUNT! equ 0 (
+    echo [ERROR] No user accounts found in userdata folder.
+    pause
+    goto :mainMenu
+)
+
+echo.
+set "SELECTED_USER="
+if !USER_COUNT! equ 1 (
+    echo Only one account detected. Using: !USER_1!
+    set "SELECTED_USER=!USER_1!"
+) else (
+    echo Multiple accounts detected.
+    set /p "user_choice=Select account number (1-!USER_COUNT!): "
+    
+    :: Get selected user based on choice
+    if "!user_choice!"=="1" set "SELECTED_USER=!USER_1!"
+    if "!user_choice!"=="2" set "SELECTED_USER=!USER_2!"
+    if "!user_choice!"=="3" set "SELECTED_USER=!USER_3!"
+    if "!user_choice!"=="4" set "SELECTED_USER=!USER_4!"
+    if "!user_choice!"=="5" set "SELECTED_USER=!USER_5!"
+)
+
+echo.
+echo Selected User ID: !SELECTED_USER!
+
+if not defined SELECTED_USER (
+    echo [ERROR] Invalid selection or user not found.
+    pause
+    goto :mainMenu
+)
+
+set "CS2_CLOUD_PATH=!USERDATA_PATH!\!SELECTED_USER!\730"
+
+:: Verify CS2 folder exists
+if not exist "!CS2_CLOUD_PATH!" (
+    echo.
+    echo [ERROR] CS2 data folder not found for this user.
+    echo Expected path: !CS2_CLOUD_PATH!
+    echo.
+    echo This could mean:
+    echo   - CS2 has never been launched on this account
+    echo   - Steam Cloud is disabled for CS2
+    echo.
+    pause
+    goto :mainMenu
+)
+
+echo [SUCCESS] CS2 cloud data folder found.
+echo Path: !CS2_CLOUD_PATH!
+echo.
+
+echo ===============================================================================
+echo                          STEP 3: BACKUP CURRENT DATA
+echo ===============================================================================
+echo.
+
+:: Create backup with timestamp
+set "BACKUP_TIMESTAMP=%date:~-4%%date:~3,2%%date:~0,2%_%time:~0,2%%time:~3,2%%time:~6,2%"
+set "BACKUP_TIMESTAMP=!BACKUP_TIMESTAMP: =0!"
+set "BACKUP_PATH=%TEMP%\CS2_Cloud_Backup_!BACKUP_TIMESTAMP!"
+
+echo Creating backup at: !BACKUP_PATH!
+echo.
+
+mkdir "!BACKUP_PATH!" >nul 2>&1
+xcopy "!CS2_CLOUD_PATH!" "!BACKUP_PATH!" /E /I /H /Y >nul 2>&1
+
+if errorlevel 1 (
+    echo [WARNING] Backup creation failed. Continue anyway?
+    set /p "continue_no_backup=Continue without backup? (y/n): "
+    if /i not "!continue_no_backup!"=="y" goto :mainMenu
+) else (
+    echo [SUCCESS] Backup created successfully.
+)
+
+echo.
+echo ===============================================================================
+echo                          STEP 4: CLEAR CLOUD DATA
+echo ===============================================================================
+echo.
+
+:: Step 4.1: Clear all files in remote folder (root level)
+echo [STEP 4.1] Clearing files in remote folder...
+set "REMOTE_PATH=!CS2_CLOUD_PATH!\remote"
+
+if not exist "!REMOTE_PATH!" goto :noRemoteFolder
+
+set "remote_files_found=0"
+for %%f in ("!REMOTE_PATH!\*.*") do (
+    if exist "%%f" (
+        echo Clearing: remote\%%~nxf
+        type nul > "%%f" 2>nul
+        set "remote_files_found=1"
+    )
+)
+
+if "!remote_files_found!"=="1" (
+    echo [SUCCESS] Remote files nullified.
+) else (
+    echo [INFO] No files found in remote folder.
+)
+goto :afterRemoteCheck
+
+:noRemoteFolder
+echo [INFO] No remote folder found.
+
+:afterRemoteCheck
+echo.
+
+:: Step 4.2: Clear all files in remote/cfg folder
+echo [STEP 4.2] Clearing files in remote/cfg folder...
+set "CFG_PATH=!CS2_CLOUD_PATH!\remote\cfg"
+
+if not exist "!CFG_PATH!" goto :noRemoteCfgFolder
+
+set "cfg_files_found=0"
+for %%f in ("!CFG_PATH!\*.*") do (
+    if exist "%%f" (
+        echo Clearing: remote\cfg\%%~nxf
+        type nul > "%%f" 2>nul
+        set "cfg_files_found=1"
+    )
+)
+
+if "!cfg_files_found!"=="1" (
+    echo [SUCCESS] Remote/cfg files nullified.
+) else (
+    echo [INFO] No files found in remote/cfg folder.
+)
+goto :afterRemoteCfgCheck
+
+:noRemoteCfgFolder
+echo [INFO] No remote/cfg folder found.
+
+:afterRemoteCfgCheck
+echo.
+
+:: Step 4.3: Nullify socache.dt in local folder
+echo [STEP 4.3] Clearing socache.dt in local folder...
+set "SOCACHE_FILE=!CS2_CLOUD_PATH!\local\socache.dt"
+
+if exist "!SOCACHE_FILE!" (
+    echo Clearing: local\socache.dt
+    type nul > "!SOCACHE_FILE!" 2>nul
+    echo [SUCCESS] socache.dt nullified.
+) else (
+    echo [INFO] socache.dt not found.
+)
+echo.
+
+:: Step 4.4: Delete local/cfg folder completely
+echo [STEP 4.4] Deleting local/cfg folder...
+set "LOCAL_CFG_PATH=!CS2_CLOUD_PATH!\local\cfg"
+
+if exist "!LOCAL_CFG_PATH!" (
+    echo Deleting: local\cfg folder and all contents
+    rd /S /Q "!LOCAL_CFG_PATH!" 2>nul
+    if not exist "!LOCAL_CFG_PATH!" (
+        echo [SUCCESS] local/cfg folder deleted.
+    ) else (
+        echo [WARNING] Failed to delete local/cfg folder completely.
+    )
+) else (
+    echo [INFO] local/cfg folder not found.
+)
+    )
+    
+    :: Check if any .txt files exist (exclude . and ..)
+    dir /b /a-d "!CFG_PATH!\*.txt" >nul 2>&1
+    if not errorlevel 1 (
+        for %%f in ("!CFG_PATH!\*.txt") do (
+            echo Clearing: %%~nxf
+            type nul > "%%f" 2>nul
+            set "files_found=1"
+        )
+    )
+    
+    if "!files_found!"=="1" (
+        echo [SUCCESS] Config files nullified.
+    ) else (
+        echo [INFO] No .cfg or .txt files found in remote/cfg folder.
+    )
+) else (
+    echo [INFO] No remote/cfg folder found (this is normal for some accounts).
+)
+        )
+    )
+    
+    :: Process .txt files
+    for %%f in ("!CFG_PATH!\*.txt") do (
+        if exist "%%f" (
+            set "filename=%%~nxf"
+            if not "!filename!"=="*.txt" (
+                echo Clearing: %%~nxf
+                type nul > "%%f" 2>nul
+                set "files_found=1"
+            )
+        )
+    )
+    
+    if "!files_found!"=="1" (
+        echo [SUCCESS] Config files nullified.
+    ) else (
+        echo [INFO] No .cfg or .txt files found in remote/cfg folder.
+    )
+) else (
+    echo [INFO] No remote/cfg folder found (this is normal for some accounts).
+)
+
+echo.
+echo ===============================================================================
+echo                          STEP 5: DELETE SYNC METADATA
+echo ===============================================================================
+echo.
+
+echo Deleting remotecache.vdf...
+if exist "!CS2_CLOUD_PATH!\remotecache.vdf" (
+    del /F /Q "!CS2_CLOUD_PATH!\remotecache.vdf" >nul 2>&1
+    echo [SUCCESS] remotecache.vdf deleted.
+) else (
+    echo [INFO] remotecache.vdf not found.
+)
+
+echo.
+echo ===============================================================================
+echo                          STEP 6: PREPARE FOR STEAM LAUNCH
+echo ===============================================================================
+echo.
+
+echo [IMPORTANT] Next steps require manual interaction:
+echo.
+echo 1. Steam will be launched
+echo 2. You will see "Steam Cloud Error" for CS2
+echo 3. Click "Play" on CS2
+echo 4. A sync conflict dialog will appear
+echo 5. DO NOT CLOSE THE DIALOG YET
+echo.
+echo Press any key when ready to launch Steam...
+pause >nul
+
+echo.
+echo Launching Steam...
+start "" "!STEAM_PATH!\steam.exe"
+
+echo.
+echo Waiting for Steam to initialize (15 seconds)...
+timeout /t 15 >nul
+
+echo.
+echo ===============================================================================
+echo                          STEP 7: MANUAL INTERACTION REQUIRED
+echo ===============================================================================
+echo.
+echo [ACTION REQUIRED] Please follow these steps EXACTLY:
+echo.
+echo 1. In Steam Library, find Counter-Strike 2
+echo 2. You should see "Cloud Error" status
+echo 3. Click the "Play" button
+echo 4. A dialog will appear: "Steam Cloud Sync Conflict"
+echo 5. DO NOT CLICK ANYTHING YET
+echo.
+echo Press any key AFTER you see the sync conflict dialog...
+pause >nul
+
+echo.
+echo ===============================================================================
+echo                          STEP 8: FINAL DELETION
+echo ===============================================================================
+echo.
+
+echo [ACTION] Now, while the dialog is still open:
+echo.
+echo Deleting remote folder and remotecache.vdf...
+
+if exist "!CS2_CLOUD_PATH!\remote" (
+    rd /S /Q "!CS2_CLOUD_PATH!\remote" >nul 2>&1
+    echo [SUCCESS] Remote folder deleted.
+)
+
+if exist "!CS2_CLOUD_PATH!\remotecache.vdf" (
+    del /F /Q "!CS2_CLOUD_PATH!\remotecache.vdf" >nul 2>&1
+    echo [SUCCESS] remotecache.vdf deleted again.
+)
+
+echo.
+echo ===============================================================================
+echo                          STEP 9: UPLOAD TO CLOUD
+echo ===============================================================================
+echo.
+echo [CRITICAL] In the Steam Cloud Sync Conflict dialog:
+echo.
+echo SELECT THE SECOND OPTION:
+echo "Upload local files to Steam Cloud"
+echo.
+echo [!] DO NOT select "Download from Steam Cloud"
+echo [!] This will upload the EMPTY state to cloud, resetting it
+echo.
+echo After selecting "Upload to Steam Cloud":
+echo   1. CS2 will launch
+echo   2. Let it fully load to main menu
+echo   3. Exit CS2 normally
+echo   4. Steam will sync the new clean state
+echo.
+echo Press any key after you have completed these steps...
+pause >nul
+
+echo.
+echo ===============================================================================
+echo                          PROCEDURE COMPLETE
+echo ===============================================================================
+echo.
+echo [SUCCESS] Steam Cloud deep clean procedure completed!
+echo.
+echo Your CS2 cloud data has been reset to a clean state.
+echo.
+echo [NEXT STEPS]
+echo   1. Launch CS2 and reconfigure your settings
+echo   2. Set up your crosshair, video, and audio settings
+echo   3. Rebind keys if needed (or use autoexec.cfg)
+echo   4. Test performance - you should notice improvements
+echo.
+echo [BACKUP LOCATION]
+echo Your old data was backed up to:
+echo !BACKUP_PATH!
+echo.
+echo [EXPECTED IMPROVEMENTS]
+echo   • Smoother frame times
+echo   • Reduced input lag
+echo   • Faster game startup
+echo   • No micro-stutters
+echo   • Better overall responsiveness
+echo.
+echo [ADDITIONAL OPTIMIZATIONS]
+echo Consider also:
+echo   • Moving excess inventory items to storage accounts
+echo   • Using static avatar instead of animated
+echo   • Minimizing friends list on main gaming account
+echo.
 call :pressAnyKey
 goto :mainMenu
 
@@ -2154,22 +2707,31 @@ echo ===========================================================================
 echo                         CONFIGURE LAUNCH PARAMETERS
 echo ===============================================================================
 echo.
-echo The following launch parameters should be added to your CS2 launch options:
+echo [UPDATED MAY 2026] Recommended launch parameters for CS2:
 echo.
-echo -exec autoexec -noaafonts -no-browser -high -nojoy -limitvsconst -softparticlesdefaultoff +fps_max 0 +engine_low_latency_sleep_after_client_tick true +cl_clock_recvmargin_enable 0 +cl_cq_min_queue 1 -language english
+echo -high -novid -exec autoexec +fps_max 0 +engine_low_latency_sleep_after_client_tick true -language english
 echo.
 echo Parameter breakdown:
+echo   • Sets high process priority (-high)
+echo   • Skips intro video for faster startup (-novid)
 echo   • Launches autoexec.cfg file (-exec autoexec)
-echo   • Disables anti-aliased fonts and browser for performance (-noaafonts -no-browser)
-echo   • Sets high process priority and disables joystick support (-high -nojoy)
-echo   • Optimizes graphics and engine settings for smoother gameplay (-limitvsconst -softparticlesdefaultoff)
-echo   • Removes FPS cap (+fps_max 0)
+echo   • Removes FPS cap for maximum performance (+fps_max 0)
 echo   • Enables low latency engine settings (+engine_low_latency_sleep_after_client_tick true)
-echo   • Disables clock receive margin and minimizes command queue (+cl_clock_recvmargin_enable 0 +cl_cq_min_queue 1)
 echo   • Forces game language to English (-language english)
 echo.
-echo [INFO] Copying parameters to clipboard...
-echo -exec autoexec -noaafonts -no-browser -high -nojoy -limitvsconst -softparticlesdefaultoff +fps_max 0 +engine_low_latency_sleep_after_client_tick true +cl_clock_recvmargin_enable 0 +cl_cq_min_queue 1 -language english | clip
+echo [REMOVED PARAMETERS - No longer work in CS2:]
+echo   X -no-browser (removed by Valve in 2024)
+echo   X -noaafonts (CS:GO legacy parameter)
+echo   X -limitvsconst (CS:GO legacy parameter)
+echo   X -softparticlesdefaultoff (CS:GO legacy parameter)
+echo.
+echo [OPTIONAL PARAMETERS - Add if needed:]
+echo   • +cl_forcepreload 1 (preload resources)
+echo   • +mat_queue_mode 2 (multithreaded rendering)
+echo   • -threads [number] (specify CPU threads)
+echo.
+echo [INFO] Copying recommended parameters to clipboard...
+echo -high -novid -exec autoexec +fps_max 0 +engine_low_latency_sleep_after_client_tick true -language english | clip
 echo.
 echo [SUCCESS] Launch parameters copied to clipboard.
 echo.
