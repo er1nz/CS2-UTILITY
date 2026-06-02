@@ -3,6 +3,12 @@
 
 **CS2 Utility - script for CS2 optimization, including: clearing game cache, DirectX, NVIDIA DXCache, setting game process configuration file (.ini), corruption checker, internet optimizer for Windows 10/11, setting autoexec file and parameters of game startup with its automatic detection on computer.**
 
+## 🆕 What's New in v0.0.4 (June 2026)
+- Deep Clean Steam Cloud - NEW feature to reset Steam Cloud and remove legacy CS:GO configs
+- Updated Launch Parameters - Optimized for 2026 systems
+- Enhanced Steam Tweaks - NoSteamWebHelper v5.0.2 integration
+- Bug Fixes - Fixed infinite loop issues, improved error handling
+- Removed - Non-functional cs2.ini option
 
 ## 🔗 Links
 - [![telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/qqer1nz)
